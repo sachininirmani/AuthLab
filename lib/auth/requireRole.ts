@@ -3,17 +3,38 @@ import { cookies } from "next/headers";
 /**
  * Sandbox role simulation:
  * - role is stored in a cookie 'sim_role' (USER/ADMIN)
- * - This is only for learning labs, not for real production authorization.
+ * - This is ONLY for learning labs, not real production authorization.
  */
-export function getSimulatedRole(): "USER" | "ADMIN" {
-  const role = cookies().get("sim_role")?.value;
+
+/**
+ * Reads the simulated role from HttpOnly cookies.
+ * Must be async because cookies() is async in Next.js 15.
+ */
+export async function getSimulatedRole(): Promise<"USER" | "ADMIN"> {
+  const cookieStore = await cookies();
+  const role = cookieStore.get("sim_role")?.value;
+
   return role === "ADMIN" ? "ADMIN" : "USER";
 }
 
-export function requireSimulatedRole(required: "USER" | "ADMIN") {
-  const role = getSimulatedRole();
+/**
+ * Enforces a required simulated role.
+ * Used by API routes to demonstrate backend authorization.
+ */
+export async function requireSimulatedRole(
+  required: "USER" | "ADMIN"
+): Promise<
+  | { ok: true }
+  | { ok: false; reason: string }
+> {
+  const role = await getSimulatedRole();
+
   if (required === "ADMIN" && role !== "ADMIN") {
-    return { ok: false as const, reason: "Role mismatch (simulated role is USER)" };
+    return {
+      ok: false,
+      reason: "Role mismatch (simulated role is USER)",
+    };
   }
-  return { ok: true as const };
+
+  return { ok: true };
 }

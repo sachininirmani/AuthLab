@@ -1,14 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import type { CookieOptions } from "@supabase/ssr";
 
 /**
  * Next.js Middleware runs before requests reach routes/pages.
- * We use it to protect:
- * - /dashboard
- * - /labs/* (optional: you can allow /labs to be public, but protect actions)
- * - /admin
- *
- * This is real enforcement (not just frontend).
+ * We use it to protect real routes (not just frontend rendering).
  */
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -19,7 +15,15 @@ export async function middleware(request: NextRequest) {
   const supabase = createServerClient(url, anon, {
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll: (cookiesToSet) => {
+
+      // ✅ FIX: explicit typing for cookiesToSet
+      setAll: (
+        cookiesToSet: {
+          name: string;
+          value: string;
+          options?: CookieOptions;
+        }[]
+      ) => {
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
@@ -36,8 +40,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/dashboard") ||
     path.startsWith("/admin");
 
-  // We keep /labs pages public so visitors can browse explanations.
-  // But the interactive API calls will require login.
+  // Redirect unauthenticated users
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/login";
